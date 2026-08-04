@@ -1,6 +1,7 @@
 export interface AnalyzeRequest {
   jobPosting: string;
-  cvText: string;
+  cvBuffer: Buffer;
+  cvFilename: string;
 }
 
 export interface SkillGap {

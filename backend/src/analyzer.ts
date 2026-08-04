@@ -33,11 +33,11 @@ function isJobAnalysis(data: any): data is JobAnalysis {
 }
 
 export async function analyzeJobFit(
-  input: AnalyzeRequest & { cvBuffer: Buffer }
+  input: AnalyzeRequest
 ): Promise<JobAnalysis> {
   //  uploading CV top OpenAI
   const uploadedFile = await openai.files.create({
-    file: new File([input.cvBuffer], input.cvFilename, { type: "application/pdf" }),
+    file: new File([Uint8Array.from(input.cvBuffer)], input.cvFilename, { type: "application/pdf" }),
     purpose: "user_data",
   });
 
@@ -72,6 +72,6 @@ export async function analyzeJobFit(
     return parsed;
   } finally {
     // clean up from OpenAI
-    await openai.files.del(uploadedFile.id);
+    await openai.files.delete(uploadedFile.id);
   }
 }
