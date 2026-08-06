@@ -1,5 +1,6 @@
 import OpenAI from "openai";
-import { AnalyzeRequest, JobAnalysis } from "./types";
+import { AnalyzeRequest } from "./types";
+import { JobAnalysis } from "./jobAnalysis.schema";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
