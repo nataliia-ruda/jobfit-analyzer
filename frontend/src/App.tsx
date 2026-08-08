@@ -1,13 +1,24 @@
 import { useState } from "react";
 import { Container, Typography, TextField, Button, Stack } from "@mui/material";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
 
 function App() {
   const [jobPosting, setJobPosting] = useState("");
-  const [cvText, setCvText] = useState("");
+  const [cvFile, setCvFile] = useState<File | null>(null);
 
-  const handleSubmit = () => {
-    console.log("Job posting:", jobPosting);
-    console.log("CV text:", cvText);
+  const handleSubmit = async () => {
+    if (!cvFile) return;
+
+    const formData = new FormData();
+    formData.append("jobPosting", jobPosting);
+    formData.append("cv", cvFile);
+
+    const res = await fetch("http://localhost:5000/analyze", {
+      method: "POST",
+      body: formData,
+    });
+    const result = await res.json();
+    console.log("Analysis result:", result);
   };
 
   return (
@@ -29,20 +40,26 @@ function App() {
           fullWidth
         />
 
-        <TextField
-          label="Your CV"
-          multiline
-          minRows={6}
-          value={cvText}
-          onChange={(e) => setCvText(e.target.value)}
-          fullWidth
-        />
+        <Button
+          variant="outlined"
+          component="label"
+          startIcon={<UploadFileIcon />}
+          sx={{ justifyContent: "flex-start", py: 1.5 }}
+        >
+          {cvFile ? cvFile.name : "Upload your CV"}
+          <input
+            type="file"
+            hidden
+            accept=".pdf,.doc,.docx,.txt"
+            onChange={(e) => setCvFile(e.target.files?.[0] ?? null)}
+          />
+        </Button>
 
         <Button
           variant="contained"
           size="large"
           onClick={handleSubmit}
-          disabled={!jobPosting || !cvText}
+          disabled={!jobPosting || !cvFile}
         >
           Analyze
         </Button>
