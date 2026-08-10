@@ -1,78 +1,55 @@
-import OpenAI from "openai";
+import OpenAI, { toFile } from "openai";
+import { JobAnalysisSchema, JobAnalysis } from "./jobAnalysis.schema";
 import { AnalyzeRequest } from "./types";
-import { JobAnalysis } from "./jobAnalysis.schema";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-const SYSTEM_PROMPT = `You are a precise job-fit analysis engine. Compare a job posting against a candidate's CV (provided as an attached file) and return ONLY a single valid JSON object, no markdown fences, no preamble, no extra text.
+const SYSTEM_PROMPT = `You are a precise job-fit analysis engine.
+Compare the candidate's CV (attached as a file) against the job posting.
+Rules:
+- Only consider skills and experience explicitly supported by the CV.
+- Do not assume missing information.
+- Distinguish between required and preferred requirements.
+- Be strict about years of experience.
+- Do not invent qualifications.
+- Give concrete, actionable CV suggestions.
+Return ONLY a valid JSON object matching the required schema, no extra text.`;
 
-The JSON must match exactly this shape:
-{
-  "jobTitle": string,
-  "matchScore": number (0-100),
-  "matchSummary": string (1-2 honest, specific sentences),
-  "skillGaps": [
-    { "skill": string, "required": boolean, "presentInCv": boolean, "note": string }
-  ],
-  "cvSuggestions": [
-    { "area": string, "suggestion": string }
-  ]
-}
-
-List 5-10 skillGaps. Give 2-4 cvSuggestions that are concrete and actionable.`;
-
-function isJobAnalysis(data: any): data is JobAnalysis {
-  return (
-    typeof data.jobTitle === "string" &&
-    typeof data.matchScore === "number" &&
-    typeof data.matchSummary === "string" &&
-    Array.isArray(data.skillGaps) &&
-    Array.isArray(data.cvSuggestions)
-  );
-}
-
-export async function analyzeJobFit(
-  input: AnalyzeRequest
-): Promise<JobAnalysis> {
-  //  uploading CV top OpenAI
-  const uploadedFile = await openai.files.create({
-    file: new File([Uint8Array.from(input.cvBuffer)], input.cvFilename, { type: "application/pdf" }),
+export async function analyzeJobFit(input: AnalyzeRequest): Promise<JobAnalysis> {
+  const uploadedCv = await openai.files.create({
+    file: await toFile(input.cvBuffer, input.cvFilename, { type: "application/pdf" }),
     purpose: "user_data",
   });
 
   try {
-  
-    const completion = await openai.chat.completions.create({
+    const response = await openai.responses.create({
       model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
+      instructions: SYSTEM_PROMPT,
+      text: {
+        format: { type: "json_object" },
+      },
+      input: [
         {
           role: "user",
           content: [
-            { type: "text", text: `JOB POSTING:\n${input.jobPosting}` },
+            { type: "input_file", file_id: uploadedCv.id },
             {
-              type: "file",
-              file: { file_id: uploadedFile.id },
-            } as any,
+              type: "input_text",
+              text: `JOB POSTING:\n${input.jobPosting}\n\nAnalyze the attached CV against this job posting.`,
+            },
           ],
         },
       ],
-      response_format: { type: "json_object" },
     });
 
-    const raw = completion.choices[0]?.message?.content;
+    const raw = response.output_text;
     if (!raw) throw new Error("No response from OpenAI");
 
     const parsed = JSON.parse(raw);
-    if (!isJobAnalysis(parsed)) {
-      throw new Error("OpenAI response did not match expected shape");
-    }
-
-    return parsed;
+    return JobAnalysisSchema.parse(parsed);
   } finally {
-    // clean up from OpenAI
-    await openai.files.delete(uploadedFile.id);
+    await openai.files.delete(uploadedCv.id);
   }
 }
