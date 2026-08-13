@@ -1,4 +1,5 @@
 import OpenAI, { toFile } from "openai";
+import { zodTextFormat } from "openai/helpers/zod";
 import { JobAnalysisSchema, JobAnalysis } from "./jobAnalysis.schema";
 import { AnalyzeRequest } from "./types";
 
@@ -28,7 +29,7 @@ export async function analyzeJobFit(input: AnalyzeRequest): Promise<JobAnalysis>
       model: "gpt-4o-mini",
       instructions: SYSTEM_PROMPT,
       text: {
-        format: { type: "json_object" },
+        format: zodTextFormat(JobAnalysisSchema, "job_analysis"),
       },
       input: [
         {
