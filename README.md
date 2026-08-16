@@ -16,7 +16,7 @@ backend/    Express API
 
 ## Setup
 
-### Backend
+Backend
 
 ```
 cd backend
@@ -36,7 +36,7 @@ npm run dev
 ```
 
 
-### Frontend
+Frontend
 
 ```
 cd frontend
@@ -44,11 +44,5 @@ npm install
 npm run dev
 ```
 
-## Usage
-
-1. Start the backend and frontend dev servers (both must be running).
-2. Open the frontend in your browser.
-3. Paste a job posting and upload a CV (PDF).
-4. Click Analyze to get a match score, skill gaps, and CV suggestions.
 
 
